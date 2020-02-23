@@ -2,10 +2,10 @@
 
 std::vector<float> CandidateScorer::Score(
     std::vector<vector<float> >& candidates, 
-    pc::ptr pc,
+    PC::Ptr PC,
     std::vector<float> curr_pos)
 {
-  const float sz = static_cast<float>(pc->points.size());
+  const float sz = static_cast<float>(PC->points.size());
   const int n = candidates.size();
   std::vector<float> scores = {};
 
@@ -23,9 +23,9 @@ std::vector<float> CandidateScorer::Score(
   for(const auto& c : candidates){
     cost = dist(c, curr_pos);
     num_frontier = 0;
-    for(auto it = pc->points.begin(); it!=pc->points.end(); it++)
+    for(auto it = PC->points.begin(); it!=PC->points.end(); it++)
       if(it->i == 0.) num_frontier += 1.;
-    scores.push_back(alp_ * num_frontier/sz - (1-alp_) * cost);
+    scores.push_back(kfrontier_ * num_frontier/sz - (1-kfrontier_) * cost);
   }
   return scores;
 }

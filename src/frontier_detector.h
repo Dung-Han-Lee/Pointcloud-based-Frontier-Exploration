@@ -4,32 +4,24 @@
 #ifndef FRONTIER_DETECTOR_H
 #define FRONTIER_DETECTOR_H
 
-#include <sensor_msgs>
-#include <pcl_ros/point_cloud.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl/point_types.h>
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl/filters/voxel_grid.h>
 #include <vector>
+#include "common_header.h"
 
-typedef pcl::PointXYZI ptype;
-typedef pcl::PointCloud<ptype> pc;
+
 
 class FrontierDetector{
   public:
     FrontierDetector() = default;
-
-    FrontierDetector(int vdim): vdim_(vdim) {};
     
     ~FrontierDetector() = default;
     
-    pc::ptr Detect(const sensor_msgs::PointCloud2::ConstPtr& msg, pc::Ptr old);
+    PC::Ptr Detect(const RosPC::ConstPtr& msg, PC::Ptr world_model);
       // inputs: current LIDAR pointcloud, previous LIDAR pointcloud
-      // return: merged-downsampled pointcloud with non frontier points having
-      //         non-zero intensity values
+      // return: frontier points
   
   private:
-    int vdim_; // voxel dimensions for downsampling
+    float ds_input_ = 0.5f;  // downsampling for input
+    float ds_frontier = 0.1f; 
+    bool verbose_ = true;
 };
 #endif

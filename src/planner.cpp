@@ -1,6 +1,17 @@
 #include <ros/ros.h>
 #include "candidate_scorer.h"
 #include "frontier_detector.h"
+#include <geometry_msgs/PoseStamped.h>
+
+PoseArray FakeInput(){
+  PoseArray pv;
+  geometry_msgs::PoseStamped pose;
+  pose.pose.position.x = 1.;
+  pose.pose.position.y = 1.;
+  pose.pose.position.z = 1.;
+  pv.poses.push_back(pose.pose);
+  return pv;
+}
 
 class Master{
   public:
@@ -9,15 +20,16 @@ class Master{
     int Loop();
 
   private:
-    PC::Ptr curr_;
+    RosPoint robot_pos_;
+    PC::Ptr frontier_;
     PC::Ptr world_;
     ros::Subscriber lidar_sub_, pos_sub_;
     ros::Publisher frontier_pub_, model_pub_;
     CandidateScorer* scorer_;
     FrontierDetector* detector_;
     
-
-    void lidarCb(const RosPC::ConstPtr& msg);
+    void LidarCb(const RosPC::ConstPtr& msg);
+    void PosCb(const Odom& odom);
     void Plan(std::vector<std::vector<float> >& candidates, 
               std::vector<float> curr_pos);
 };
@@ -29,16 +41,16 @@ Master::~Master(){
 
 Master::Master(ros::NodeHandle& nh){
   // Instantiate member objects
-  float ratio_frontier = 0.5;
-  scorer_ = new CandidateScorer(ratio_frontier);
+  scorer_ = new CandidateScorer();
   detector_ = new FrontierDetector();
 
   // Create empty cloud
-  curr_ = PC::Ptr (new PC);
+  frontier_ = PC::Ptr (new PC);
   world_ = PC::Ptr (new PC);
 
-  lidar_sub_ = nh.subscribe("velodyne_cloud_registered", 10, &Master::lidarCb, this);
-  //pos_sub_   = nh.subscribe("topic", 10, &Master::posCb, this);
+  // Initialize subcribers and publishers
+  lidar_sub_ = nh.subscribe("velodyne_cloud_registered", 10, &Master::LidarCb, this);
+  pos_sub_ = nh.subscribe("/integrated_to_init", 1, &Master::PosCb, this);
   frontier_pub_ = nh.advertise<RosPC>("frontier", 10);
   model_pub_ = nh.advertise<RosPC>("world_model", 10);
 }
@@ -46,32 +58,30 @@ Master::Master(ros::NodeHandle& nh){
 int Master::Loop(){
   while(ros::ok())
   {
-    ros::Rate loop_rate(1);
+    ros::Rate loop_rate(10);
     ros::spinOnce();
     loop_rate.sleep();
-    // TODO
-    // Get candidates
-    // Evaluate candidates
-    // Plan search path
   }    
 }
 
 
-void Master::lidarCb(const RosPC::ConstPtr& imsg){
-  curr_ = detector_->Detect(imsg, world_);
+void Master::LidarCb(const RosPC::ConstPtr& imsg){
+  frontier_ = detector_->Detect(imsg, world_);
   RosPC omsg1, omsg2;
-  pcl::toROSMsg(*curr_ , omsg1);
+  pcl::toROSMsg(*frontier_ , omsg1);
   pcl::toROSMsg(*world_, omsg2);
+
+  omsg2.header = omsg1.header;
   frontier_pub_.publish(omsg1);
-  omsg2.header.frame_id = omsg1.header.frame_id;
   model_pub_.publish(omsg2);
+  
+  PoseArray pv = FakeInput();
+  auto points = scorer_->Score(pv, robot_pos_, frontier_);
 }
 
-/* 
-void Master::Plan(std::vector<std::vector<float>>& candidates, 
-                  std::vector<float> curr_pos){
-  std::vector<float> scores = scorer_(candidates, curr_, curr_pos);
-}*/
+void Master::PosCb(const Odom& odom){
+  robot_pos_ = odom.pose.pose.position;
+}
 
 int main(int argc, char** argv){
   ros::init(argc, argv, "exploration_node");

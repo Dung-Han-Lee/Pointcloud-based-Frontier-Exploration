@@ -1,22 +1,28 @@
 #ifndef CANDIDATE_SCORER_H
 #define CANDIDATE_SCORER_H
 
-#include <vector>
 #include <math.h>
+#include <utility>
+#include <algorithm>
 #include "common_header.h"
 
-constexpr float kLidarRange = 100.; 
+constexpr double kTimeValue = 0.1; // sec per point
+constexpr double kSpeed = 1.3; // meter per sec
+constexpr double kRadius  = 10.0; // radius for frontier to be attributed to propsed point
 
 class CandidateScorer{
   public:
-    CandidateScorer(float k): kfrontier_(k) {};
+    CandidateScorer()  = default;
+
     ~CandidateScorer() = default;
-    std::vector<float> Score(std::vector<std::vector<float> >& candidates, 
-                              PC::Ptr PC,
-                              std::vector<float> curr_pos);
-      // Score candidate points according to #frontiers and travel dist 
-  private:
-    float kfrontier_; // trade off parameter
+
+    std::vector<std::pair<float, RosPoint>> Score( 
+        const PoseArray& proposals, const RosPoint& cur, const PC::Ptr frontiers);
+      // Inputs: convex hull centroids, current robot position, fronteirs
+      // evaluate candidates accoridng to travel distance and # of frontiers
+      // results are saved as a sorted RosPoint* vectors internally
+    
+    bool verbose_ = 0;
 };
 
 #endif

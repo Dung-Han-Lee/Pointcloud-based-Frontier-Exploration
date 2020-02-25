@@ -1,31 +1,45 @@
 #include "candidate_scorer.h"
+typedef std::pair<float, RosPoint> Pair;
 
-std::vector<float> CandidateScorer::Score(
-    std::vector<vector<float> >& candidates, 
-    PC::Ptr PC,
-    std::vector<float> curr_pos)
+std::vector<Pair> CandidateScorer::Score(
+   const PoseArray& proposals, const RosPoint& cur, const PC::Ptr frontiers)
 {
-  const float sz = static_cast<float>(PC->points.size());
-  const int n = candidates.size();
-  std::vector<float> scores = {};
-
-  // Evaluate euclidean dist between the curr_pos and a candiate point
-  auto dist = [](std::vector<float> c, std::vector<float> curr_pos){
-    float dx = c[0] - curr_pos[0];
-    float dy = c[1] - curr_pos[1];
-    float dz = c[2] - curr_pos[2];
-    float dist = std::hypot(std::hypot(dx, dy), dz);
-    return dist/kLidarRange;
+  // Evaluate euclidean dist between pose
+  auto Dist = [](const RosPoint& a, const RosPoint& b){
+    return std::hypot(std::hypot(a.x - b.x, a.y - b.y), a.z - b.z);
   };
 
-  // Assign score to candidate: #frontier/#pts - cost
-  float num_frontier, cost;
-  for(const auto& c : candidates){
-    cost = dist(c, curr_pos);
-    num_frontier = 0;
-    for(auto it = PC->points.begin(); it!=PC->points.end(); it++)
-      if(it->i == 0.) num_frontier += 1.;
-    scores.push_back(kfrontier_ * num_frontier/sz - (1-kfrontier_) * cost);
+  auto Inlier = [](const RosPoint& a, const Ptype& b){
+    return std::hypot(std::hypot(a.x - b.x, a.y - b.y), a.z - b.z) < kRadius;
+  };
+
+  auto Value = [](int nfrontier, double dist){
+    return nfrontier * kTimeValue - dist/kSpeed;
+  };
+
+  // Assign score to each proposal point
+  std::vector<Pair> res;
+  auto it = proposals.poses.begin();
+  int cnt = 0;
+  for(; it != proposals.poses.end(); it++, cnt = 0){
+    auto& pos = it->position;
+    for(const auto& pt : frontiers->points)
+      if(Inlier(pos, pt)) cnt++;
+    res.emplace_back( Value(cnt, Dist(pos, cur)), pos);
+    std::cout<<"cnt = "<<cnt;
   }
-  return scores;
+
+  // Sort by score
+  std::sort(res.begin(), res.end(), 
+      [](const Pair& a, const Pair& b){return a.first < b.first;});
+  
+  if(verbose_){
+    auto p = res.front().second;
+    //std::cout<<"robot pos is x = "<<cur.x<<" y = "<<cur.y<<" z = "<<cur.z<<" ";
+    std::cout<<"Top proposal is x = "<<p.x<<" y = "<<p.y<<" z = "<<p.z<<"\n";
+  }
+
+  return res;
 }
+
+

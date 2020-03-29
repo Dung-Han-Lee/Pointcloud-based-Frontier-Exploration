@@ -12,8 +12,8 @@ Example [video](https://www.youtube.com/watch?v=AmljFj6Loq0&fbclid=IwAR0LnJ0lbV-
     rosrun exploration exploration_node
 
 ## File Structures
-  +  planner.cpp -- main file  
-  +  frontier_detector.cpp -- detector/cluster  
-  +     commond_header -- PCL/ROS headers  
+  planner.cpp -- main file  
+  +-- frontier_detector.cpp -- detector/cluster  
+  +----- commond_header -- PCL/ROS headers  
 
 

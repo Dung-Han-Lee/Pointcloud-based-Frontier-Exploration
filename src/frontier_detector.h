@@ -5,6 +5,7 @@
 #define FRONTIER_DETECTOR_H
 
 #include <vector>
+#include <algorithm>
 #include "common_header.h"
 
 
@@ -15,13 +16,18 @@ class FrontierDetector{
     
     ~FrontierDetector() = default;
     
-    PC::Ptr Detect(const RosPC::ConstPtr& msg, PC::Ptr world_model);
-      // inputs: current LIDAR pointcloud, previous LIDAR pointcloud
-      // return: frontier points
-  
+    void Detect(const RosPC::ConstPtr& msg,\
+        PC::Ptr world_model, PC::Ptr frontier);
+
+    void ApplySensorModel(const RosPoint& robot_pos, PC::Ptr frontier);
+
+    void Downsample(PC::Ptr cloud, float leafsz);
+
+    void SetIntensity(PC::Ptr cloud, float val);
+
+    void ClusterPoints(PC::Ptr frontier);
+
   private:
-    float ds_input_ = 0.5f;  // downsampling for input
-    float ds_frontier = 0.1f; 
     bool verbose_ = true;
 };
 #endif

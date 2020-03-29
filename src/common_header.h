@@ -11,7 +11,6 @@
 #include <pcl/filters/project_inliers.h>
 #include <pcl/ModelCoefficients.h>
 #include <iostream>
-#include <vector>
 
 typedef pcl::PointXYZI Ptype;
 typedef pcl::PointCloud<Ptype> PC;

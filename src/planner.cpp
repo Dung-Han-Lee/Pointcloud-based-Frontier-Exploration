@@ -50,7 +50,7 @@ Master::Master(ros::NodeHandle& nh){
 
   // Initialize subcribers and publishers
   lidar_sub_ = nh.subscribe("velodyne_cloud_registered", 10, &Master::LidarCb, this);
-  pos_sub_ = nh.subscribe("/integrated_to_init", 1, &Master::PosCb, this);
+  pos_sub_ = nh.subscribe("aft_mapped_to_init", 1, &Master::PosCb, this);
   frontier_pub_ = nh.advertise<RosPC>("frontier", 10);
   model_pub_ = nh.advertise<RosPC>("world_model", 10);
 }
@@ -66,17 +66,25 @@ int Master::Loop(){
 
 
 void Master::LidarCb(const RosPC::ConstPtr& imsg){
-  frontier_ = detector_->Detect(imsg, world_);
+  
+  // Get accumlated raw-frontier points
+  detector_->Detect(imsg, world_, frontier_);
+  detector_->ApplySensorModel(robot_pos_, frontier_);
+  detector_->ClusterPoints(frontier_);
+
+  // Convert pcl pointcloud to sensor_msg pointcloud2
   RosPC omsg1, omsg2;
   pcl::toROSMsg(*frontier_ , omsg1);
   pcl::toROSMsg(*world_, omsg2);
 
-  omsg2.header = omsg1.header;
+  // Publish to sensor frame 
+  omsg1.header = imsg->header;
+  omsg2.header = imsg->header;
   frontier_pub_.publish(omsg1);
   model_pub_.publish(omsg2);
   
-  PoseArray pv = FakeInput();
-  auto points = scorer_->Score(pv, robot_pos_, frontier_);
+  //PoseArray pv = FakeInput();
+  //auto points = scorer_->Score(pv, robot_pos_, frontier_);
 }
 
 void Master::PosCb(const Odom& odom){

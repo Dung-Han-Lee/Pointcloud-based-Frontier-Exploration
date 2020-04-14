@@ -65,10 +65,16 @@ struct Edge
 
   int Size() { return (id1 != -1) + (id2 != -1); }
   
+  std::string ids () const
+  {
+    return std::to_string(id1) + " " + std::to_string(id2);
+  }
+
   friend std::ostream& operator<<(std::ostream& os, const Edge& e)
   {
     os << "[edge pt1 = " << e.a.ToString()
-       << " | edge pt2 = " << e.b.ToString() <<"] ";
+       << " | edge pt2 = " << e.b.ToString() 
+       << " | face ids = " << e.ids() << "] ";
     return os;
   }
 
@@ -85,6 +91,8 @@ class ConvexHull
 
     template<typename T> bool Inside(T p);
 
+    const std::vector<Face>& GetFaces() const {return this->faces;};
+
   private:
 
     bool Colinear(Vec3& a, Vec3& b, Vec3& c);
@@ -93,9 +101,12 @@ class ConvexHull
 
     bool OutofFace(const Face& f, const Vec3& p) const;
 
-    size_t Key2Edge(Vec3& a, Vec3& b) const;
+    size_t Key2Edge(const Vec3& a, const Vec3& b) const;
 
-    void MakeOneFace(Vec3& a, Vec3& b, Vec3& c, Vec3& inner_pt);
+    Face MakeOneFace(const Vec3& a, const Vec3& b, 
+        const Vec3& c, const Vec3& inner_pt);
+
+    void BuildFirstHull();
 
     int Size() const {return this->vertices.size();};
 
@@ -114,6 +125,7 @@ template<typename T> ConvexHull::ConvexHull(const std::vector<T>& points)
     this->vertices[i].y = points[i].y;
     this->vertices[i].z = points[i].z;
   }
+  this->BuildFirstHull();
 }
 
 #endif

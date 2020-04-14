@@ -1,6 +1,6 @@
 #include "convexhull.h"
 
-size_t ConvexHull::Key2Edge(Vec3& a, Vec3& b) const
+size_t ConvexHull::Key2Edge(const Vec3& a, const Vec3& b) const
 {
   size_t hash_a = std::hash<std::string>{}(a.ToString());
   size_t hash_b = std::hash<std::string>{}(b.ToString());
@@ -18,4 +18,44 @@ bool ConvexHull::OutofFace(const Face& f, const Vec3& p) const
         ay * (bz * cx - bx * cz) +\
         az * (bx * cy - by * cx);
   return vol < 0;
+}
+
+Face ConvexHull::MakeOneFace(const Vec3& a, const Vec3& b, 
+    const Vec3& c, const Vec3& inner_pt)
+{
+  // Use index of faces as their id
+  int face_id = this->faces.size();
+
+  // Create edges and link them to face_id
+  auto create_edge = [&](const Vec3& p1, const Vec3& p2)
+  {
+    size_t key = Key2Edge(p1, p2);
+    if(!map_edges.count(key)) 
+    {
+      map_edges.insert({key, Edge(p1, p2)});
+    }
+    map_edges.at(key).LinkAdjFace(face_id);
+  };
+  create_edge(a, b);
+  create_edge(a, c);
+  create_edge(b, c);
+
+  // Make sure face is CCW with face normal pointing outward
+  Face face(a, b, c);
+  if(this->OutofFace(face, inner_pt)) face.Reverse();
+  return face;
+}
+
+void ConvexHull::BuildFirstHull()
+{
+  for(int i = 0; i < 4; i++)
+    for(int j = i + 1; j < 4; j++)
+      for(int k = j + 1; k < 4; k++) 
+      {
+        auto p1 = this->vertices[i];
+        auto p2 = this->vertices[j];
+        auto p3 = this->vertices[k];
+        auto p4 = this->vertices[6-i-j-k];
+        faces.push_back(this->MakeOneFace(p1, p2, p3, p4));
+      }
 }

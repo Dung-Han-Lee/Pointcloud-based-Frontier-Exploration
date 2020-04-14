@@ -8,6 +8,8 @@
 
 struct Vec3
 {
+  Vec3() = default;
+
   Vec3(double x, double y, double z): x(x), y(y), z(z) {};
   
   std::string ToString() const
@@ -74,11 +76,44 @@ struct Edge
   Vec3 a, b;
 };
 
-size_t Key2Edge(Vec3& a, Vec3& b)
+class ConvexHull
 {
-  size_t hash_a = std::hash<std::string>{}(a.ToString());
-  size_t hash_b = std::hash<std::string>{}(b.ToString());
-  return hash_a & hash_b;
+  public:
+    template<typename T> ConvexHull(const std::vector<T>& points);
+
+    ~ConvexHull() = default;
+
+    template<typename T> bool Inside(T p);
+
+  private:
+
+    bool Colinear(Vec3& a, Vec3& b, Vec3& c);
+
+    bool CoPlanar(Face& f, Vec3& p);
+
+    bool OutofFace(const Face& f, const Vec3& p) const;
+
+    size_t Key2Edge(Vec3& a, Vec3& b) const;
+
+    void MakeOneFace(Vec3& a, Vec3& b, Vec3& c, Vec3& inner_pt);
+
+    int Size() const {return this->vertices.size();};
+
+    std::vector<Vec3> vertices = {};
+    std::vector<Face> faces = {};
+    std::unordered_map<size_t, Edge> map_edges;
+};
+
+template<typename T> ConvexHull::ConvexHull(const std::vector<T>& points)
+{
+  const int n = points.size();
+  this->vertices.resize(n);
+  for(int i = 0; i < n; i++)
+  { 
+    this->vertices[i].x = points[i].x;
+    this->vertices[i].y = points[i].y;
+    this->vertices[i].z = points[i].z;
+  }
 }
 
 #endif

@@ -130,6 +130,7 @@ include_directories(
 
 ## Depedent cpp files
 set(SOURCES ${SOURCES}
+  src/convexhull.cpp
 )
 
 ## Add cmake target dependencies of the library

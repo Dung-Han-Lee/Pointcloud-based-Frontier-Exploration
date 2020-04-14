@@ -13,7 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   geometry_msgs
-  nav_msgs
+  visualization_msgs
 )
 
 
@@ -109,7 +109,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   LIBRARIES exploration
-  CATKIN_DEPENDS pcl_conversions pcl_ros roscpp sensor_msgs geometry_msgs nav_msgs
+  CATKIN_DEPENDS pcl_conversions pcl_ros roscpp sensor_msgs geometry_msgs visualization_msgs
 )
 
 ###########
@@ -130,8 +130,6 @@ include_directories(
 
 ## Depedent cpp files
 set(SOURCES ${SOURCES}
-  src/frontier_detector.cpp
-  src/candidate_scorer.cpp
 )
 
 ## Add cmake target dependencies of the library

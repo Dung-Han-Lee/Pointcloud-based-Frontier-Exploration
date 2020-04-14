@@ -54,19 +54,19 @@
   <build_depend>roscpp</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>geometry_msgs</build_depend>
-  <build_depend>nav_msgs</build_depend>
+  <build_depend>visualization_msgs</build_depend>
   <build_export_depend>pcl_conversions</build_export_depend>
   <build_export_depend>pcl_ros</build_export_depend>
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>sensor_msgs</build_export_depend>
   <build_export_depend>geometry_msgs</build_export_depend>
-  <build_export_depend>nav_msgs</build_export_depend>
+  <build_export_depend>visualization_msgs</build_export_depend>
   <exec_depend>pcl_conversions</exec_depend>
   <exec_depend>pcl_ros</exec_depend>
   <exec_depend>roscpp</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
-  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>visualization_msgs</exec_depend>
   <build_depend>libpcl-all-dev</build_depend>
   <exec_depend>libpcl-all</exec_depend>
 

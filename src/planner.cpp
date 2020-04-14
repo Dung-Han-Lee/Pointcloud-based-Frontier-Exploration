@@ -1,99 +1,68 @@
 #include <ros/ros.h>
-#include "candidate_scorer.h"
-#include "frontier_detector.h"
-#include <geometry_msgs/PoseStamped.h>
-
-PoseArray FakeInput(){
-  PoseArray pv;
-  geometry_msgs::PoseStamped pose;
-  pose.pose.position.x = 1.;
-  pose.pose.position.y = 1.;
-  pose.pose.position.z = 1.;
-  pv.poses.push_back(pose.pose);
-  return pv;
-}
+#include <visualization_msgs/Marker.h>
 
 class Master{
   public:
     Master(ros::NodeHandle& nh);
-    ~Master();
+
+    ~Master() = default;
+    
+    void VizPolyhedron();
+
     int Loop();
 
   private:
-    RosPoint robot_pos_;
-    PC::Ptr frontier_;
-    PC::Ptr world_;
-    ros::Subscriber lidar_sub_, pos_sub_;
-    ros::Publisher frontier_pub_, model_pub_;
-    CandidateScorer* scorer_;
-    FrontierDetector* detector_;
+
+    ros::Publisher convex_pub;
     
-    void LidarCb(const RosPC::ConstPtr& msg);
-    void PosCb(const Odom& odom);
-    void Plan(std::vector<std::vector<float> >& candidates, 
-              std::vector<float> curr_pos);
 };
 
-Master::~Master(){
-  delete scorer_;
-  delete detector_;
-}
-
 Master::Master(ros::NodeHandle& nh){
-  // Instantiate member objects
-  scorer_ = new CandidateScorer();
-  detector_ = new FrontierDetector();
-
-  // Create empty cloud
-  frontier_ = PC::Ptr (new PC);
-  world_ = PC::Ptr (new PC);
-
-  // Initialize subcribers and publishers
-  lidar_sub_ = nh.subscribe("velodyne_cloud_registered", 10, &Master::LidarCb, this);
-  pos_sub_ = nh.subscribe("aft_mapped_to_init", 1, &Master::PosCb, this);
-  frontier_pub_ = nh.advertise<RosPC>("frontier", 10);
-  model_pub_ = nh.advertise<RosPC>("world_model", 10);
+  convex_pub = nh.advertise<visualization_msgs::Marker>("convex hull", 10);
 }
 
 int Master::Loop(){
   while(ros::ok())
   {
     ros::Rate loop_rate(10);
+    this->VizPolyhedron();
     ros::spinOnce();
     loop_rate.sleep();
   }    
 }
 
+void Master::VizPolyhedron()
+{
+  visualization_msgs::Marker scan_marker;
+  scan_marker.header.frame_id = "/robot_0/base_laser_link";
+  scan_marker.header.stamp = ros::Time::now();
+  scan_marker.ns = "scan";
+  scan_marker.type = visualization_msgs::Marker::TRIANGLE_LIST;
+  scan_marker.action = visualization_msgs::Marker::ADD;
+  scan_marker.id = 0;
+  scan_marker.scale.x = scan_marker.scale.y = scan_marker.scale.z = 1.0;
+  std_msgs::ColorRGBA scan_color;
+  scan_marker.pose.position.x = 0.0;
+  scan_marker.pose.position.y = 0.0;
+  scan_marker.pose.position.z = 0.0;
+  scan_marker.pose.orientation.x = 0.0;
+  scan_marker.pose.orientation.y = 0.0;
+  scan_marker.pose.orientation.z = 0.0;
+  scan_marker.pose.orientation.w = 1.0;
+  scan_color.a = 0.8f;
+  scan_color.r = 0.25f;
+  scan_color.g = 0.5f;
+  scan_color.b = 0.9f;
+  scan_marker.color = scan_color;
+  geometry_msgs::Point temp;
 
-void Master::LidarCb(const RosPC::ConstPtr& imsg){
-  
-  // Get accumlated raw-frontier points
-  detector_->Detect(imsg, world_, frontier_);
-  detector_->ApplySensorModel(robot_pos_, frontier_);
-  detector_->ClusterPoints(frontier_);
-
-  // Convert pcl pointcloud to sensor_msg pointcloud2
-  RosPC omsg1, omsg2;
-  pcl::toROSMsg(*frontier_ , omsg1);
-  pcl::toROSMsg(*world_, omsg2);
-
-  // Publish to sensor frame 
-  omsg1.header = imsg->header;
-  omsg2.header = imsg->header;
-  frontier_pub_.publish(omsg1);
-  model_pub_.publish(omsg2);
-  
-  //PoseArray pv = FakeInput();
-  //auto points = scorer_->Score(pv, robot_pos_, frontier_);
+  std::vector<std::vector<double>> points = {{0,0,0}, {11.,0,0}, {0,10,0}};
+  for (int i = 0; i < points.size(); i++) {
+    temp.x = points[i][0];
+    temp.y = points[i][1];
+    temp.z = points[i][2];
+    scan_marker.points.push_back(temp);
+  }
+  this->convex_pub.publish(scan_marker);
 }
 
-void Master::PosCb(const Odom& odom){
-  robot_pos_ = odom.pose.pose.position;
-}
-
-int main(int argc, char** argv){
-  ros::init(argc, argv, "exploration_node");
-  ros::NodeHandle nh;
-  Master master(nh);
-  master.Loop();
-}

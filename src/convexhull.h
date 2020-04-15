@@ -5,6 +5,7 @@
 #include <string>
 #include <iostream>
 #include <unordered_map>
+#include <list>
 #include "utility.h"
 
 
@@ -14,7 +15,7 @@ struct Face
   Face(const Point3D& p1, const Point3D& p2, const Point3D& p3): visible(false)
       { vertices[0] = p1; vertices[1] = p2; vertices[2] = p3;};
 
-  void Reverse(){std::swap(vertices[0], vertices[1]);};
+  void Reverse(){std::swap(vertices[0], vertices[2]); };
 
   friend std::ostream& operator<<(std::ostream& os, const Face& f)
   {
@@ -42,6 +43,7 @@ struct Edge
       std::cout<<"warning: property violated!\n";
       std::cout<<"associate points: "<<endpoints[0]<<" "<<endpoints[1]<<"\n";
       std::cout<<"associate face: "<<*face<<"\n";
+      exit(1);
     }
     (adjface1 == NULL ? adjface1 : adjface2)= face;
   };
@@ -61,7 +63,9 @@ struct Edge
   {
     os << "[edge pt1 = "   << e.endpoints[0].ToString()
        << " | edge pt2 = " << e.endpoints[1].ToString() 
-       << "| " << std::to_string(e.Size()) << "] ";
+       << "| " << std::to_string(e.Size()) << " ";
+       if(e.adjface1) std::cout<< e.adjface1 <<" ";
+       if(e.adjface2) std::cout<< e.adjface2  <<" ] ";
     return os;
   }
 
@@ -79,29 +83,29 @@ class ConvexHull
 
     template<typename T> bool Inside(T p);
 
-    const std::vector<Face>& GetFaces() const {return this->faces;};
+    const std::list<Face>& GetFaces() const {return this->faces;};
 
     void Print(const std::string mode);
     // get vertices 
 
   //private:
 
-    bool Colinear(Point3D& a, Point3D& b, Point3D& c);
+    bool Colinear(const Point3D& a, const Point3D& b, const Point3D& c) const;
 
     bool CoPlanar(Face& f, Point3D& p);
 
-    bool OutofFace(const Face& f, const Point3D& p) const;
+    int VolumeSign(const Face& f, const Point3D& p) const;
 
     size_t Key2Edge(const Point3D& a, const Point3D& b) const;
 
     void AddOneFace(const Point3D& a, const Point3D& b, 
         const Point3D& c, const Point3D& inner_pt);
 
-    void BuildFirstHull(const std::vector<Point3D>& pointcloud);
+    bool BuildFirstHull(std::vector<Point3D>& pointcloud);
 
     void IncreHull(const Point3D& p);
 
-    void ConstructHull(const std::vector<Point3D>& pointcloud);
+    void ConstructHull(std::vector<Point3D>& pointcloud);
 
     void CleanUp();
 
@@ -110,7 +114,7 @@ class ConvexHull
     int Size() const {return this->pointcloud.size();};
 
     std::vector<Point3D> pointcloud = {};
-    std::vector<Face> faces = {};
+    std::list<Face> faces = {};
     std::unordered_map<size_t, Edge> map_edges;
 };
 
@@ -133,7 +137,7 @@ size_t ConvexHull::Key2Edge(const Point3D& a, const Point3D& b) const
   return ph(a) ^ ph(b);
 }
 
-bool ConvexHull::OutofFace(const Face& f, const Point3D& p) const
+int ConvexHull::VolumeSign(const Face& f, const Point3D& p) const
 {
   double vol;
   double ax, ay, az, bx, by, bz, cx, cy, cz;
@@ -149,7 +153,8 @@ bool ConvexHull::OutofFace(const Face& f, const Point3D& p) const
   vol = ax * (by * cz - bz * cy) +\
         ay * (bz * cx - bx * cz) +\
         az * (bx * cy - by * cx);
-  return vol < 0;
+  if(vol == 0) return 0;
+  return vol < 0 ? -1 : 1;
 }
 
 void ConvexHull::AddOneFace(const Point3D& a, const Point3D& b, 
@@ -158,14 +163,14 @@ void ConvexHull::AddOneFace(const Point3D& a, const Point3D& b,
   // Make sure face is CCW with face normal pointing outward
   this->faces.emplace_back(a, b, c);
   auto& new_face = this->faces.back();
-  if(this->OutofFace(new_face, inner_pt)) new_face.Reverse();
+  if(this->VolumeSign(this->faces.back(), inner_pt) < 0) new_face.Reverse();
 
   // Create edges and link them to face_id
   auto create_edge = [&](const Point3D& p1, const Point3D& p2)
   {
     size_t key = this->Key2Edge(p1, p2);
     if(!this->map_edges.count(key)) 
-    {
+    { 
       this->map_edges.insert({key, Edge(p1, p2)});
     }
 
@@ -177,22 +182,56 @@ void ConvexHull::AddOneFace(const Point3D& a, const Point3D& b,
   create_edge(b, c);
 }
 
-
-
-void ConvexHull::BuildFirstHull(const std::vector<Point3D>& pointcloud)
+bool ConvexHull::Colinear(const Point3D& a, const Point3D& b, const Point3D& c) const
 {
-  for(int i = 0; i < 4; i++)
-    for(int j = i + 1; j < 4; j++)
-      for(int k = j + 1; k < 4; k++) 
-      {
-        auto p1 = pointcloud[i];
-        auto p2 = pointcloud[j];
-        auto p3 = pointcloud[k];
-        auto p4 = pointcloud[6-i-j-k];
-        p1.processed = p2.processed = \
-        p3.processed = p4.processed = true;
-        this->AddOneFace(p1, p2, p3, p4);
-      }
+  return ((c.z - a.z) * (b.y - a.y) - 
+          (b.z - a.z) * (c.y - a.y)) == 0 &&\
+         ((b.z - a.z) * (c.x - a.x) - 
+          (b.x - a.x) * (c.z - a.z)) == 0 &&\
+         ((b.x - a.x) * (c.y - a.y) - 
+          (b.y - a.y) * (c.x - a.x)) == 0;
+}
+
+bool ConvexHull::BuildFirstHull(std::vector<Point3D>& pointcloud)
+{
+  const int n = pointcloud.size();
+  if(n <= 3)
+  {
+    std::cout<<"Tetrahedron: points.size() < 4\n";
+    return false;    
+  }
+
+  int i = 2;
+  while(this->Colinear(pointcloud[i], pointcloud[i-1], pointcloud[i-2]))
+  {
+    if(i++ == n - 1)
+    {
+      std::cout<<"Tetrahedron: All points are colinear!\n";
+      return false;
+    }
+  }
+
+  Face face(pointcloud[i], pointcloud[i-1], pointcloud[i-2]);
+
+  int j = i;
+  while(!this->VolumeSign(face, pointcloud[j]))
+  {
+    if(j++ == n-1)
+    {
+      std::cout<<"Tetrahedron: All pointcloud are coplanar!\n";
+      return false;    
+    }
+  }
+
+
+  auto& p1 = pointcloud[i];    auto& p2 = pointcloud[i-1];
+  auto& p3 = pointcloud[i-2];  auto& p4 = pointcloud[j];
+  p1.processed = p2.processed = p3.processed = p4.processed = true;
+  this->AddOneFace(p1, p2, p3, p4);
+  this->AddOneFace(p1, p2, p4, p3);
+  this->AddOneFace(p1, p3, p4, p2);
+  this->AddOneFace(p2, p3, p4, p1);
+  return true;
 }
  
 Point3D ConvexHull::FindInnerPoint(const Face* f, const Edge& e)
@@ -207,21 +246,24 @@ Point3D ConvexHull::FindInnerPoint(const Face* f, const Edge& e)
 
 void ConvexHull::IncreHull(const Point3D& pt)
 {
-  bool vis = false;
-  for(auto& f : this->faces)
-  {
-    if(OutofFace(f, pt)) 
-    {
-      f.visible = vis = true;
-      std::cout<<"visible face = \n"<<f<<"\n";
-      auto a = f.vertices[0];
-      auto b = f.vertices[1];
-      auto c = f.vertices[2];
+  //for(auto it = this->faces.begin(); it!= this->faces.end(); it++)
+  //  std::cout<<&(*it)<<"\n";
 
-      this->map_edges.at(this->Key2Edge(a, b)).Erase(&f);
-      this->map_edges.at(this->Key2Edge(a, c)).Erase(&f);
-      this->map_edges.at(this->Key2Edge(b, c)).Erase(&f);
-      this->Print("edge");
+  bool vis = false;
+  for(auto it = this->faces.begin(); it!= this->faces.end(); it++)
+  {
+    auto& face = *it;
+    if(VolumeSign(face, pt) < 0) 
+    {
+      face.visible = vis = true;
+      std::cout<<"visible face by point "<<pt<<"\n"<<face<<"\n";
+      auto a = face.vertices[0];
+      auto b = face.vertices[1];
+      auto c = face.vertices[2];
+
+      this->map_edges.at(this->Key2Edge(a, b)).Erase(&face);
+      this->map_edges.at(this->Key2Edge(a, c)).Erase(&face);
+      this->map_edges.at(this->Key2Edge(b, c)).Erase(&face);
     }
   }
   if(!vis) return;
@@ -236,12 +278,14 @@ void ConvexHull::IncreHull(const Point3D& pt)
     if(face1 != NULL && face2 != NULL) 
       continue;
 
-    if(face1 == NULL && face2 == NULL) 
+    if(face1 != NULL && face2 != NULL && ) 
     {
       edge.remove = true;
       continue;
     }
 
+    this->Print("edge");
+    std::cout<<"extending edge: "<<edge<<"\n";
     // Only one of the adjacent face is visible: this edge
     // would be used for constructing new face
     if(face1 == NULL) std::swap(face1, face2);
@@ -250,10 +294,10 @@ void ConvexHull::IncreHull(const Point3D& pt)
   }
 }
 
-void ConvexHull::ConstructHull(const std::vector<Point3D>& pointcloud)
+void ConvexHull::ConstructHull(std::vector<Point3D>& pointcloud)
 {
-  this->BuildFirstHull(pointcloud);
-  std::cout<<"init\n";  this->Print("face");
+  if(!this->BuildFirstHull(pointcloud)) return;
+  std::cout<<"init\n";  this->Print("face"); this->Print("edge");
   for(const auto& pt : pointcloud)
   {
     if(pt.processed) continue;
@@ -271,14 +315,11 @@ void ConvexHull::CleanUp()
     if(it->second.remove) map_edges.erase(it);
   }
 
-  const int n = this->faces.size();
-  for(size_t i = 0; i < n; i++)
+  auto it = this->faces.begin();
+  while(it != this->faces.end())
   {
-    if(this->faces[i].visible)
-    {
-      this->faces[i] = this->faces.back();
-      this->faces.pop_back();
-    }
+    if(it->visible) this->faces.erase(it++);
+    else it++;
   }
 }
 

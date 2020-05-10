@@ -9,7 +9,7 @@ R of the robot would be suppressed.
 
 Topics subsribed to: `velodyne_cloud_registered`, `aft_mapped_to_init`(robot position).  
 Topics published to: `frontier`, `world_model`  
-[!Example](https://media.giphy.com/media/JsEMHz8UokICGwypCi/giphy.gif)
+![Example](https://media.giphy.com/media/JsEMHz8UokICGwypCi/giphy.gif)
 
 ## Build and Run
     catkin_make

@@ -1,17 +1,6 @@
 #include <ros/ros.h>
-#include "candidate_scorer.h"
 #include "frontier_detector.h"
 #include <geometry_msgs/PoseStamped.h>
-
-PoseArray FakeInput(){
-  PoseArray pv;
-  geometry_msgs::PoseStamped pose;
-  pose.pose.position.x = 1.;
-  pose.pose.position.y = 1.;
-  pose.pose.position.z = 1.;
-  pv.poses.push_back(pose.pose);
-  return pv;
-}
 
 class Master{
   public:
@@ -25,23 +14,19 @@ class Master{
     PC::Ptr world_;
     ros::Subscriber lidar_sub_, pos_sub_;
     ros::Publisher frontier_pub_, model_pub_;
-    CandidateScorer* scorer_;
     FrontierDetector* detector_;
     
     void LidarCb(const RosPC::ConstPtr& msg);
     void PosCb(const Odom& odom);
-    void Plan(std::vector<std::vector<float> >& candidates, 
-              std::vector<float> curr_pos);
 };
 
-Master::~Master(){
-  delete scorer_;
+Master::~Master()
+{
   delete detector_;
 }
 
 Master::Master(ros::NodeHandle& nh){
   // Instantiate member objects
-  scorer_ = new CandidateScorer();
   detector_ = new FrontierDetector();
 
   // Create empty cloud
@@ -82,9 +67,6 @@ void Master::LidarCb(const RosPC::ConstPtr& imsg){
   omsg2.header = imsg->header;
   frontier_pub_.publish(omsg1);
   model_pub_.publish(omsg2);
-  
-  //PoseArray pv = FakeInput();
-  //auto points = scorer_->Score(pv, robot_pos_, frontier_);
 }
 
 void Master::PosCb(const Odom& odom){

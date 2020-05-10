@@ -1,11 +1,4 @@
 #include "frontier_detector.h"
-#include <pcl/filters/statistical_outlier_removal.h>
-#include <pcl/filters/radius_outlier_removal.h>
-#include <pcl/filters/conditional_removal.h>
-
-// https://stackoverflow.com/questions/49819248/which-pcl-filter-to-use-to-downsample-a-point-cloud
-// http://docs.pointclouds.org/trunk/classpcl_1_1_radius_outlier_removal.html
-// TODO: apply range filter to get rid off ceiling
 
 const double RAIDUS = 10.;
 

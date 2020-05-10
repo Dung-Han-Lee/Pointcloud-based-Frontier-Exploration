@@ -131,7 +131,6 @@ include_directories(
 ## Depedent cpp files
 set(SOURCES ${SOURCES}
   src/frontier_detector.cpp
-  src/candidate_scorer.cpp
 )
 
 ## Add cmake target dependencies of the library
